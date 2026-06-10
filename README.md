@@ -1,2 +1,21 @@
-# Smart-EV-Charging-Station-Recommendation-System
-An intelligent EV charging station recommendation system that predicts charging wait times and recommends the most suitable charging station based on charger availability, station utilization, and predicted waiting time to improve charging efficiency and user convenience.
+## Project Status
+
+🚧 Currently in Development
+
+Completed:
+- Data preprocessing
+- Feature encoding
+- Train-test split
+- Linear Regression
+- Decision Tree Regressor
+
+In Progress:
+- Random Forest Regressor
+- Model comparison
+- Station recommendation logic
+- Frontend development
+
+Planned:
+- Flask integration
+- Interactive user interface
+- Final model deployment
