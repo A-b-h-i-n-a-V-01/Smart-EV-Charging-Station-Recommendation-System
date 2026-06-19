@@ -154,19 +154,23 @@ def recommend():
 
         stations_list = []
         for idx, row in matching_stations.iterrows():
+            # Extract basic station fields
+            ports_avail = int(row["ports_available"])
+            ports_total = int(row["ports_total"])
+            price = float(row["current_price"])
+
             # Get features for the model
             features_df = get_station_features(row)
             # Predict wait time
             predicted_wait = predict_wait_time(features_df)
             
-            #
+            #Override if free ports
+            if ports_avail > 0:
+                predicted_wait = 0
+            
+
             # Calculate distance
             dist = haversine_distance(user_lat, user_lon, row["latitude"], row["longitude"])
-            
-            # Extract basic station fields
-            ports_avail = int(row["ports_available"])
-            ports_total = int(row["ports_total"])
-            price = float(row["current_price"])
             
             # Calculate a recommendation score from 1.0 to 9.9
             # Use tuned weights so massive wait times don't push the score into negatives before clamping!
