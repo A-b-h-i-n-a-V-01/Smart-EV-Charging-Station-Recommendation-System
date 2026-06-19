@@ -801,7 +801,12 @@ function initSearchForm() {
     showLoading();
 
     try {
-      const { data, fromDemo } = await fetchRecommendations(city, area, chargerType);
+      // Fetch recommendations and run a 1.5-second minimum timer in parallel
+      const fetchPromise = fetchRecommendations(city, area, chargerType);
+      const timerPromise = new Promise(resolve => setTimeout(resolve, 1500));
+
+      const [recommendationResult] = await Promise.all([fetchPromise, timerPromise]);
+      const { data, fromDemo } = recommendationResult;
 
       // Check if we got valid data with at least one station
       const hasData = data && (data.best_overall || data.lowest_wait || data.closest || data.lowest_cost);
