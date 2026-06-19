@@ -20,126 +20,124 @@
    Add/remove cities to match your Flask backend dataset
 ══════════════════════════════════════ */
 const CITIES = [
-  'Atlanta', 'Austin', 'Boston', 'Chicago', 'Denver', 
-  'Las Vegas', 'Los Angeles', 'Miami', 'Minneapolis', 'New York', 
+  'Atlanta', 'Austin', 'Boston', 'Chicago', 'Denver',
+  'Las Vegas', 'Los Angeles', 'Miami', 'Minneapolis', 'New York',
   'Phoenix', 'Portland', 'San Diego', 'San Francisco', 'Seattle'
 ].sort();
 
 const AREAS_BY_CITY = {
-    "Phoenix": [
-        "Parkwood",
-        "Camelback East",
-        "South Mountain",
-        "Paradise Valley",
-        "South-West"
-    ],
-    "Seattle": [
-        "South-East",
-        "South Lake Union",
-        "Wedgwood",
-        "North-West",
-        "Vashon"
-    ],
-    "Chicago": [
-        "Bowmanville",
-        "South Chicago",
-        "South Lawndale",
-        "North-East",
-        "Oak Lawn"
-    ],
-    "New York": [
-        "North Bergen",
-        "Mariners Harbor",
-        "Brooklyn",
-        "Brownsville",
-        "East Tremont"
-    ],
-    "Miami": [
-        "West",
-        "South",
-        "North",
-        "North-East",
-        "South-East"
-    ],
-    "Atlanta": [
-        "North-East",
-        "West",
-        "Kirkwood",
-        "Sunrise",
-        "Vinings"
-    ],
-    "Boston": [
-        "Fort Hill",
-        "Mill Hill",
-        "Roxbury",
-        "Winchester Highlands",
-        "Nahant"
-    ],
-    "Denver": [
-        "East",
-        "West",
-        "South-East",
-        "North",
-        "North-West"
-    ],
-    "Las Vegas": [
-        "Buffalo",
-        "Sunrise Manor",
-        "Aliante",
-        "Whitney Ranch",
-        "Paradise"
-    ],
-    "Portland": [
-        "Vancouver Mall",
-        "West Haven-Sylvan",
-        "Gilbert",
-        "West Tigard",
-        "Forest Park"
-    ],
-    "Los Angeles": [
-        "Pico Rivera",
-        "Mid-Wilshire",
-        "Morton",
-        "Westchester",
-        "Los Feliz"
-    ],
-    "Minneapolis": [
-        "New Hope",
-        "Eagan",
-        "Shoreview",
-        "Hamline - Midway",
-        "South"
-    ],
-    "San Francisco": [
-        "Fort McDowell",
-        "South-East",
-        "South-West",
-        "East",
-        "Richmond District"
-    ],
-    "Austin": [
-        "East",
-        "West",
-        "North-West",
-        "EastVillage",
-        "Lake City Estates"
-    ],
-    "San Diego": [
-        "Mission Valley",
-        "Mission Beach",
-        "East",
-        "East 2",
-        "La Jolla"
-    ]
+  "Phoenix": [
+    "Parkwood",
+    "Camelback East",
+    "South Mountain",
+    "Paradise Valley",
+    "South-West"
+  ],
+  "Seattle": [
+    "South-East",
+    "South Lake Union",
+    "Wedgwood",
+    "North-West",
+    "Vashon"
+  ],
+  "Chicago": [
+    "Bowmanville",
+    "South Chicago",
+    "South Lawndale",
+    "North-East",
+    "Oak Lawn"
+  ],
+  "New York": [
+    "North Bergen",
+    "Mariners Harbor",
+    "Brooklyn",
+    "Brownsville",
+    "East Tremont"
+  ],
+  "Miami": [
+    "West",
+    "South",
+    "North",
+    "North-East",
+    "South-East"
+  ],
+  "Atlanta": [
+    "North-East",
+    "West",
+    "Kirkwood",
+    "Sunrise",
+    "Vinings"
+  ],
+  "Boston": [
+    "Fort Hill",
+    "Mill Hill",
+    "Roxbury",
+    "Winchester Highlands",
+    "Nahant"
+  ],
+  "Denver": [
+    "East",
+    "West",
+    "South-East",
+    "North",
+    "North-West"
+  ],
+  "Las Vegas": [
+    "Buffalo",
+    "Sunrise Manor",
+    "Aliante",
+    "Whitney Ranch",
+    "Paradise"
+  ],
+  "Portland": [
+    "Vancouver Mall",
+    "West Haven-Sylvan",
+    "Gilbert",
+    "West Tigard",
+    "Forest Park"
+  ],
+  "Los Angeles": [
+    "Pico Rivera",
+    "Mid-Wilshire",
+    "Morton",
+    "Westchester",
+    "Los Feliz"
+  ],
+  "Minneapolis": [
+    "New Hope",
+    "Eagan",
+    "Shoreview",
+    "Hamline - Midway",
+    "South"
+  ],
+  "San Francisco": [
+    "Fort McDowell",
+    "South-East",
+    "South-West",
+    "East",
+    "Richmond District"
+  ],
+  "Austin": [
+    "East",
+    "West",
+    "North-West",
+    "EastVillage",
+    "Lake City Estates"
+  ],
+  "San Diego": [
+    "Mission Valley",
+    "Mission Beach",
+    "East",
+    "East 2",
+    "La Jolla"
+  ]
 };
 
 /* ══════════════════════════════════════
    FLASK API CONFIG
-   Updates dynamically to local backend for testing, or production Render server
+   Update API_BASE_URL to your Flask backend address
 ══════════════════════════════════════ */
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-  ? 'http://127.0.0.1:5000'
-  : 'https://smart-ev-charging-station-recommendation-system.onrender.com'; // TODO: Update this URL after deploying on Render
+const API_BASE_URL = 'https://ev-recommend-backend.onrender.com';
 const API_ENDPOINT = `${API_BASE_URL}/api/recommend`;
 
 /* ══════════════════════════════════════
@@ -199,9 +197,9 @@ if (isHomePage) {
    CITY SEARCHABLE DROPDOWN
 ══════════════════════════════════════ */
 function initCityDropdown() {
-  const input    = $('city-input');
-  const listbox  = $('city-listbox');
-  const arrow    = $('city-dropdown-arrow');
+  const input = $('city-input');
+  const listbox = $('city-listbox');
+  const arrow = $('city-dropdown-arrow');
   if (!input || !listbox) return;
 
   let isOpen = false;
@@ -264,7 +262,7 @@ function initCityDropdown() {
     if (group) group.classList.remove('has-error');
     closeList();
     input.blur();
-    
+
     // Update Area Dropdown
     if (window._updateAreaForCity) {
       window._updateAreaForCity(city);
@@ -317,10 +315,10 @@ function initCityDropdown() {
    AREA SEARCHABLE DROPDOWN
 ══════════════════════════════════════ */
 function initAreaDropdown() {
-  const wrapper  = $('area-dropdown-wrapper');
-  const input    = $('area-input');
-  const listbox  = $('area-listbox');
-  const arrow    = $('area-dropdown-arrow');
+  const wrapper = $('area-dropdown-wrapper');
+  const input = $('area-input');
+  const listbox = $('area-listbox');
+  const arrow = $('area-dropdown-arrow');
   if (!input || !listbox || !wrapper) return;
 
   let isOpen = false;
@@ -426,7 +424,7 @@ function initAreaDropdown() {
     selectedArea = '';
     input.value = '';
     currentAreas = AREAS_BY_CITY[city] || [];
-    
+
     if (currentAreas.length > 0) {
       input.disabled = false;
       wrapper.classList.remove('disabled');
@@ -445,9 +443,9 @@ function initAreaDropdown() {
    CHARGER TYPE CUSTOM DROPDOWN
 ══════════════════════════════════════ */
 function initChargerDropdown() {
-  const display  = $('charger-display');
-  const listbox  = $('charger-listbox');
-  const text     = $('charger-display-text');
+  const display = $('charger-display');
+  const listbox = $('charger-listbox');
+  const text = $('charger-display-text');
   if (!display || !listbox) return;
 
   let isOpen = false;
@@ -487,7 +485,7 @@ function initChargerDropdown() {
 
   listbox.querySelectorAll('.charger-item').forEach(item => {
     item.addEventListener('click', () => {
-      const val   = item.dataset.value;
+      const val = item.dataset.value;
       const label = item.querySelector('.charger-name').textContent;
       selectCharger(val, label);
     });
@@ -588,10 +586,10 @@ function getDemoData(city, chargerType) {
   ];
 
   return {
-    best_overall:  stations[0],
-    lowest_wait:   stations[1],
-    closest:       stations[2],
-    lowest_cost:   stations[3]
+    best_overall: stations[0],
+    lowest_wait: stations[1],
+    closest: stations[2],
+    lowest_cost: stations[3]
   };
 }
 
@@ -731,10 +729,10 @@ function showResults(data, city, chargerType, fromDemo) {
   }
 
   // Populate all four cards
-  populateCard('best',    data.best_overall);
-  populateCard('wait',    data.lowest_wait);
+  populateCard('best', data.best_overall);
+  populateCard('wait', data.lowest_wait);
   populateCard('closest', data.closest);
-  populateCard('cost',    data.lowest_cost);
+  populateCard('cost', data.lowest_cost);
 
   // Reset button
   const btn = $('find-station-btn');
@@ -771,7 +769,7 @@ function resetSearch() {
   if (es) es.classList.add('hidden');
 
   // Reset score bars
-  ['best','wait','closest','cost'].forEach(s => {
+  ['best', 'wait', 'closest', 'cost'].forEach(s => {
     const fill = $(`score-fill-${s}`);
     if (fill) fill.style.width = '0%';
   });
@@ -796,8 +794,8 @@ function initSearchForm() {
 
     if (!validateForm()) return;
 
-    const city        = window._getCityValue();
-    const area        = window._getAreaValue();
+    const city = window._getCityValue();
+    const area = window._getAreaValue();
     const chargerType = window._getChargerValue();
 
     showLoading();
