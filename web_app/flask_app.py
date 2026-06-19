@@ -104,6 +104,13 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
     return R * c
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "online",
+        "message": "Smart EV Charging Recommendation API is running successfully."
+    })
+
 @app.route("/api/recommend", methods=["POST"])
 def recommend():
     try:
