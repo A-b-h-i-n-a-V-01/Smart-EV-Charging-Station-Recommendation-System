@@ -159,6 +159,7 @@ def recommend():
             # Predict wait time
             predicted_wait = predict_wait_time(features_df)
             
+            #
             # Calculate distance
             dist = haversine_distance(user_lat, user_lon, row["latitude"], row["longitude"])
             
