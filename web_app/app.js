@@ -135,9 +135,11 @@ const AREAS_BY_CITY = {
 
 /* ══════════════════════════════════════
    FLASK API CONFIG
-   Update API_BASE_URL to your Flask backend address
+   Updates dynamically to local backend for testing, or production Render server
 ══════════════════════════════════════ */
-const API_BASE_URL = 'http://127.0.0.1:5000';
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://127.0.0.1:5000'
+  : 'https://smart-ev-charging-station-recommendation-system.onrender.com'; // TODO: Update this URL after deploying on Render
 const API_ENDPOINT = `${API_BASE_URL}/api/recommend`;
 
 /* ══════════════════════════════════════
