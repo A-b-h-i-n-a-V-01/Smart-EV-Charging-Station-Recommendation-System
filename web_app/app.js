@@ -133,11 +133,13 @@ const AREAS_BY_CITY = {
   ]
 };
 
-/* ══════════════════════════════════════
-   FLASK API CONFIG
-   Update API_BASE_URL to your Flask backend address
-══════════════════════════════════════ */
-const API_BASE_URL = 'http://127.0.0.1:5000';
+const LOCAL_API_URL = 'http://127.0.0.1:5000';
+const CLOUD_API_URL = 'https://ev-recommend-backend.onrender.com';
+
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? LOCAL_API_URL
+  : CLOUD_API_URL;
+
 const API_ENDPOINT = `${API_BASE_URL}/api/recommend`;
 
 /* ══════════════════════════════════════
@@ -911,7 +913,7 @@ async function triggerAIInsights(city, area, chargerType, data) {
     recommendations: data,
     all_stations: data.all_stations || []
   };
-  
+
   // Reset chat history
   currentChatHistory = [];
   const historyContainer = $('ai-chat-history');
@@ -963,6 +965,12 @@ async function triggerAIInsights(city, area, chargerType, data) {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData.error === "token expired") {
+          throw new Error("token expired");
+        }
+      }
       throw new Error(`Server error: ${response.status}`);
     }
 
@@ -971,11 +979,19 @@ async function triggerAIInsights(city, area, chargerType, data) {
 
   } catch (err) {
     console.error('[ChargeIQ AI] Failed to fetch insights:', err);
+    if (err.message === "token expired") {
+      insightsContent.innerHTML = `
+        <h3>🤖 AI Recommendation Summary</h3>
+        <p style="color: var(--danger-color, #ff4d4d); font-weight: bold; margin-bottom: 8px;">⚠️ Gemini API Token Expired</p>
+        <p>Your configured Gemini API key is invalid or has expired. Please check your <code>.env</code> file and update <code>GEMINI_API_KEY</code> with a valid key.</p>
+      `;
+      return;
+    }
     // Local fallback
     const bestName = data.best_overall ? data.best_overall.station_name : 'N/A';
     const cheapName = data.lowest_cost ? data.lowest_cost.station_name : 'N/A';
     const waitName = data.lowest_wait ? data.lowest_wait.station_name : 'N/A';
-    
+
     insightsContent.innerHTML = `
       <h3>🤖 AI Recommendation Summary</h3>
       <p>Could not connect to the Generative AI engine. Here is a localized summary based on your recommendations:</p>
@@ -1027,6 +1043,12 @@ async function handleChatSubmit(event) {
     removeChatTypingIndicator(indicatorId);
 
     if (!response.ok) {
+      if (response.status === 401) {
+        const errorData = await response.json().catch(() => ({}));
+        if (errorData.error === "token expired") {
+          throw new Error("token expired");
+        }
+      }
       throw new Error(`Server error: ${response.status}`);
     }
 
@@ -1039,7 +1061,11 @@ async function handleChatSubmit(event) {
   } catch (err) {
     console.error('[ChargeIQ AI] Failed to chat:', err);
     removeChatTypingIndicator(indicatorId);
-    appendChatMessage('assistant', "I'm sorry, I encountered an error while processing your request. Please check that the backend is running and the Gemini API key is configured.");
+    if (err.message === "token expired") {
+      appendChatMessage('assistant', "⚠️ **Gemini API Token Expired**. Please update your `GEMINI_API_KEY` in the `.env` file with a valid key.");
+    } else {
+      appendChatMessage('assistant', "I'm sorry, I encountered an error while processing your request. Please check that the backend is running and the Gemini API key is configured.");
+    }
   } finally {
     inputEl.disabled = false;
     if (sendBtn) sendBtn.disabled = false;
