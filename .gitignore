@@ -27,3 +27,9 @@ Thumbs.db
 
 # Large Datasets
 Dataset/ev_charging_station_data.csv
+
+# Secrets & local environment variables
+.env
+web_app/.env
+web_app/env
+
