@@ -137,7 +137,7 @@ const AREAS_BY_CITY = {
    FLASK API CONFIG
    Update API_BASE_URL to your Flask backend address
 ══════════════════════════════════════ */
-const API_BASE_URL = 'https://ev-recommend-backend.onrender.com';
+const API_BASE_URL = 'http://127.0.0.1:5000';
 const API_ENDPOINT = `${API_BASE_URL}/api/recommend`;
 
 /* ══════════════════════════════════════
@@ -714,6 +714,10 @@ function showResults(data, city, chargerType, fromDemo) {
   if (ls) ls.classList.add('hidden');
   if (rs) rs.classList.remove('hidden');
 
+  // Show AI assistant section
+  const aiSection = $('ai-assistant-section');
+  if (aiSection) aiSection.classList.remove('hidden');
+
   // Header
   const citySpan = $('results-city-name');
   if (citySpan) citySpan.textContent = city;
@@ -740,6 +744,10 @@ function showResults(data, city, chargerType, fromDemo) {
   if (btn) { btn.disabled = false; btn.style.opacity = ''; }
   if (txt) txt.textContent = 'Find Best Charging Station';
 
+  // Trigger AI Insights
+  const area = window._getAreaValue ? window._getAreaValue() : '';
+  triggerAIInsights(city, area, chargerType, data);
+
   // Scroll to results
   setTimeout(() => {
     const rs2 = $('results-section');
@@ -752,6 +760,9 @@ function showEmpty() {
   const es = $('empty-state');
   if (ls) ls.classList.add('hidden');
   if (es) es.classList.remove('hidden');
+
+  const aiSection = $('ai-assistant-section');
+  if (aiSection) aiSection.classList.add('hidden');
 
   const btn = $('find-station-btn');
   const txt = $('find-btn-text');
@@ -767,6 +778,9 @@ function resetSearch() {
   const es = $('empty-state');
   if (rs) rs.classList.add('hidden');
   if (es) es.classList.add('hidden');
+
+  const aiSection = $('ai-assistant-section');
+  if (aiSection) aiSection.classList.add('hidden');
 
   // Reset score bars
   ['best', 'wait', 'closest', 'cost'].forEach(s => {
@@ -862,3 +876,232 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initScrollAnimations();
 });
+
+/* ══════════════════════════════════════
+   AI CHARGING ASSISTANT & CHATBOT LOGIC
+══════════════════════════════════════ */
+
+let currentRecommendationsContext = null;
+let currentChatHistory = [];
+
+function parseMarkdown(text) {
+  if (!text) return '';
+  // Convert bullet points
+  let html = text.replace(/^\s*[-*+]\s+(.+)$/gm, '<li>$1</li>');
+  // Wrap list items in ul blocks
+  html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+  // Clean nested double uls
+  html = html.replace(/<\/ul>\s*<ul>/g, '');
+  // Convert bold text
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Convert line breaks to paragraphs
+  html = html.split('\n\n').map(p => {
+    if (p.trim().startsWith('<ul>') || p.trim().startsWith('<li>')) return p;
+    return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+  }).join('');
+  return html;
+}
+
+async function triggerAIInsights(city, area, chargerType, data) {
+  // Store context for chat
+  currentRecommendationsContext = {
+    city,
+    area,
+    charger_type: chargerType,
+    recommendations: data,
+    all_stations: data.all_stations || []
+  };
+  
+  // Reset chat history
+  currentChatHistory = [];
+  const historyContainer = $('ai-chat-history');
+  if (historyContainer) {
+    historyContainer.innerHTML = `
+      <div class="ai-message assistant">
+        <div class="ai-message-bubble">
+          Hello! I'm your ChargeIQ AI assistant. Ask me questions about the stations we found. For example:
+          <div class="quick-chips" style="margin-top: 10px;">
+            <button class="quick-chip-btn" type="button" onclick="sendQuickPrompt('Which station has the best amenities nearby?')">🍔 Best Amenities?</button>
+            <button class="quick-chip-btn" type="button" onclick="sendQuickPrompt('Which station is the cheapest?')">💰 Cheapest option?</button>
+            <button class="quick-chip-btn" type="button" onclick="sendQuickPrompt('Are there any stations near hotels or shopping?')">🏢 Hotel/Shopping nearby?</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const insightsContent = $('ai-insights-content');
+  if (!insightsContent) return;
+
+  // Show loading skeleton
+  insightsContent.innerHTML = `
+    <div class="ai-skeleton-loader">
+      <span class="ai-loader-dot"></span>
+      <span class="ai-loader-dot"></span>
+      <span class="ai-loader-dot"></span>
+    </div>
+    <p class="ai-loading-text">Analyzing pricing tradeoffs, amenities, and wait times...</p>
+  `;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ai-analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        city,
+        area,
+        charger_type: chargerType,
+        recommendations: {
+          best_overall: data.best_overall,
+          lowest_wait: data.lowest_wait,
+          closest: data.closest,
+          lowest_cost: data.lowest_cost
+        },
+        all_stations: data.all_stations || []
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const resData = await response.json();
+    insightsContent.innerHTML = parseMarkdown(resData.insights);
+
+  } catch (err) {
+    console.error('[ChargeIQ AI] Failed to fetch insights:', err);
+    // Local fallback
+    const bestName = data.best_overall ? data.best_overall.station_name : 'N/A';
+    const cheapName = data.lowest_cost ? data.lowest_cost.station_name : 'N/A';
+    const waitName = data.lowest_wait ? data.lowest_wait.station_name : 'N/A';
+    
+    insightsContent.innerHTML = `
+      <h3>🤖 AI Recommendation Summary</h3>
+      <p>Could not connect to the Generative AI engine. Here is a localized summary based on your recommendations:</p>
+      <ul>
+        <li><strong>Best Balance</strong>: <strong>${bestName}</strong> offers the best score factoring in wait time, cost, and availability.</li>
+        <li><strong>Budget Choice</strong>: <strong>${cheapName}</strong> offers the lowest price at $${data.lowest_cost ? parseFloat(data.lowest_cost.cost_per_kwh).toFixed(2) : '0.00'}/kWh.</li>
+        <li><strong>Quickest Charge</strong>: <strong>${waitName}</strong> has the lowest predicted wait time of ${data.lowest_wait ? data.lowest_wait.predicted_wait_min : 0} mins.</li>
+      </ul>
+      <p style="font-size:0.8rem; color:var(--text-muted);">Tip: Set your <code>GEMINI_API_KEY</code> environment variable and restart the Flask app to enable full interactive AI features.</p>
+    `;
+  }
+}
+
+// Chat functions
+async function handleChatSubmit(event) {
+  if (event) event.preventDefault();
+
+  const inputEl = $('ai-chat-input');
+  if (!inputEl) return;
+
+  const text = inputEl.value.trim();
+  if (!text) return;
+
+  inputEl.value = '';
+  appendChatMessage('user', text);
+
+  inputEl.disabled = true;
+  const sendBtn = $('ai-chat-send-btn');
+  if (sendBtn) sendBtn.disabled = true;
+
+  const indicatorId = appendChatTypingIndicator();
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/ai-chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: text,
+        history: currentChatHistory,
+        city: currentRecommendationsContext ? currentRecommendationsContext.city : '',
+        area: currentRecommendationsContext ? currentRecommendationsContext.area : '',
+        charger_type: currentRecommendationsContext ? currentRecommendationsContext.charger_type : '',
+        recommendations: currentRecommendationsContext ? currentRecommendationsContext.recommendations : {},
+        all_stations: currentRecommendationsContext ? currentRecommendationsContext.all_stations : []
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    removeChatTypingIndicator(indicatorId);
+
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    appendChatMessage('assistant', data.response);
+
+    currentChatHistory.push({ role: 'user', text: text });
+    currentChatHistory.push({ role: 'model', text: data.response });
+
+  } catch (err) {
+    console.error('[ChargeIQ AI] Failed to chat:', err);
+    removeChatTypingIndicator(indicatorId);
+    appendChatMessage('assistant', "I'm sorry, I encountered an error while processing your request. Please check that the backend is running and the Gemini API key is configured.");
+  } finally {
+    inputEl.disabled = false;
+    if (sendBtn) sendBtn.disabled = false;
+    inputEl.focus();
+  }
+}
+
+function appendChatMessage(role, text) {
+  const historyContainer = $('ai-chat-history');
+  if (!historyContainer) return;
+
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `ai-message ${role}`;
+
+  const bubbleDiv = document.createElement('div');
+  bubbleDiv.className = 'ai-message-bubble';
+  bubbleDiv.innerHTML = parseMarkdown(text);
+
+  msgDiv.appendChild(bubbleDiv);
+  historyContainer.appendChild(msgDiv);
+
+  historyContainer.scrollTop = historyContainer.scrollHeight;
+}
+
+function appendChatTypingIndicator() {
+  const historyContainer = $('ai-chat-history');
+  if (!historyContainer) return '';
+
+  const id = 'typing-' + Date.now();
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'ai-message assistant';
+  msgDiv.id = id;
+
+  const bubbleDiv = document.createElement('div');
+  bubbleDiv.className = 'ai-message-bubble';
+  bubbleDiv.innerHTML = `
+    <div class="ai-skeleton-loader" style="height:auto; min-height:0; padding:4px 0; justify-content:flex-start;">
+      <span class="ai-loader-dot" style="width:6px; height:6px;"></span>
+      <span class="ai-loader-dot" style="width:6px; height:6px;"></span>
+      <span class="ai-loader-dot" style="width:6px; height:6px;"></span>
+    </div>
+  `;
+
+  msgDiv.appendChild(bubbleDiv);
+  historyContainer.appendChild(msgDiv);
+  historyContainer.scrollTop = historyContainer.scrollHeight;
+
+  return id;
+}
+
+function removeChatTypingIndicator(id) {
+  const indicator = $(id);
+  if (indicator) indicator.remove();
+}
+
+function sendQuickPrompt(promptText) {
+  const inputEl = $('ai-chat-input');
+  if (inputEl) {
+    inputEl.value = promptText;
+    handleChatSubmit();
+  }
+}
+
+window.sendQuickPrompt = sendQuickPrompt;
+window.handleChatSubmit = handleChatSubmit;

@@ -5,6 +5,20 @@ import pandas as pd
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+try:
+    from google import genai
+    from google.genai import types
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS so frontend on port 8080 can communicate with port 5000
 
@@ -192,7 +206,11 @@ def recommend():
                 "available_ports": ports_avail,
                 "total_ports": ports_total,
                 "cost_per_kwh": round(price, 2),
-                "score": round(score, 1)
+                "score": round(score, 1),
+                "amenities_nearby": str(row["amenities_nearby"]) if not pd.isna(row["amenities_nearby"]) else "None",
+                "location_type": str(row["location_type"]) if not pd.isna(row["location_type"]) else "Unknown",
+                "network": str(row["network"]) if not pd.isna(row["network"]) else "Unknown",
+                "pricing_type": str(row["pricing_type"]) if not pd.isna(row["pricing_type"]) else "Unknown"
             })
 
         # Ensure wait time is strictly an integer with no decimals
@@ -263,7 +281,8 @@ def recommend():
             "best_overall": best_overall,
             "lowest_wait": lowest_wait,
             "closest": closest,
-            "lowest_cost": lowest_cost
+            "lowest_cost": lowest_cost,
+            "all_stations": stations_list
         }
 
         print("Recommendations prepared successfully:")
@@ -278,5 +297,179 @@ def recommend():
         print(f"Error serving recommendation: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/ai-analyze", methods=["POST"])
+def ai_analyze():
+    try:
+        req_data = request.get_json() or {}
+        city = req_data.get("city", "")
+        area = req_data.get("area", "")
+        charger_type = req_data.get("charger_type", "")
+        recommendations = req_data.get("recommendations", {})
+        all_stations = req_data.get("all_stations", [])
+
+        if not city or not recommendations:
+            return jsonify({"error": "Missing city or recommendations context"}), 400
+
+        # Construct the context prompt
+        context = f"Context:\n- City: {city}\n- Area/Region: {area}\n- Charger Type: {charger_type}\n\nRecommendations:\n"
+        for rec_key, label in [
+            ("best_overall", "Best Overall"),
+            ("lowest_wait", "Lowest Wait Time"),
+            ("closest", "Closest Station"),
+            ("lowest_cost", "Lowest Cost")
+        ]:
+            rec = recommendations.get(rec_key)
+            if rec:
+                context += f"- {label}: {rec.get('station_name')} (Wait: {rec.get('predicted_wait_min')} min, Dist: {rec.get('distance_km'):.1f} km, Cost: ${rec.get('cost_per_kwh')}/kWh, Ports: {rec.get('available_ports')}/{rec.get('total_ports')} free)\n"
+
+        if all_stations:
+            context += "\nAll Matching Stations:\n"
+            for s in all_stations[:15]:
+                context += f"- {s.get('station_name')}: Dist: {s.get('distance_km'):.1f} km, Wait: {s.get('predicted_wait_min')} min, Ports: {s.get('available_ports')}/{s.get('total_ports')} free, Cost: ${s.get('cost_per_kwh')}/kWh, Amenities: {s.get('amenities_nearby', 'None')}, Network: {s.get('network', 'Unknown')}, Location Type: {s.get('location_type', 'Unknown')}\n"
+
+        # Check API key and package
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not GEMINI_AVAILABLE:
+            return jsonify({
+                "insights": "### 🤖 AI Recommendation Insights\n\n*Note: The `google-genai` Python library is not installed. Please run `pip install -r requirements.txt` and set `GEMINI_API_KEY` to enable real-time AI generation.*\n\n**Quick Local Summary:**\n- **Fastest charger**: **" + (recommendations.get("lowest_wait", {}).get("station_name", "N/A")) + "** has the lowest wait time of " + str(recommendations.get("lowest_wait", {}).get("predicted_wait_min", 0)) + " mins.\n- **Most budget-friendly**: **" + (recommendations.get("lowest_cost", {}).get("station_name", "N/A")) + "** at $" + str(recommendations.get("lowest_cost", {}).get("cost_per_kwh", 0)) + "/kWh.\n- **Closest**: **" + (recommendations.get("closest", {}).get("station_name", "N/A")) + "** is " + f"{recommendations.get('closest', {}).get('distance_km', 0):.1f}" + " km away."
+            })
+
+        if not api_key:
+            return jsonify({
+                "insights": "### 🤖 AI Recommendation Insights\n\n*Note: `GEMINI_API_KEY` environment variable is not configured. To activate ChargeIQ's Gemini-powered assistant, create a `.env` file in the project root containing `GEMINI_API_KEY=your_api_key_here`.*\n\n**Quick Local Summary:**\n- **Fastest charger**: **" + (recommendations.get("lowest_wait", {}).get("station_name", "N/A")) + "** has the lowest wait time of " + str(recommendations.get("lowest_wait", {}).get("predicted_wait_min", 0)) + " mins.\n- **Most budget-friendly**: **" + (recommendations.get("lowest_cost", {}).get("station_name", "N/A")) + "** at $" + str(recommendations.get("lowest_cost", {}).get("cost_per_kwh", 0)) + "/kWh.\n- **Closest**: **" + (recommendations.get("closest", {}).get("station_name", "N/A")) + "** is " + f"{recommendations.get('closest', {}).get('distance_km', 0):.1f}" + " km away."
+            })
+
+        prompt = f"""
+You are ChargeIQ AI, a smart assistant for an EV Charging Station Recommendation web application.
+Based on the following context, provide a brief, professional, and visually engaging Markdown summary comparison (around 100-150 words).
+Focus on:
+1. Comparing the recommended stations (Best Overall, Lowest Wait, Closest, Lowest Cost) and their practical trade-offs.
+2. Highlighting any interesting features (e.g. networks, location types, or who has nearby amenities like restaurants or shopping).
+3. Recommending the best options for different drivers (e.g. if someone is in a rush vs. wants to save money or needs restrooms/shopping nearby).
+
+Keep it clean, formatting with clear bullet points and emojis. Do not list all matching stations, only highlight key ones.
+
+{context}
+"""
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        return jsonify({"insights": response.text})
+
+    except Exception as e:
+        print(f"Error in ai_analyze: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/ai-chat", methods=["POST"])
+def ai_chat():
+    try:
+        req_data = request.get_json() or {}
+        message = req_data.get("message", "")
+        history = req_data.get("history", [])
+        city = req_data.get("city", "")
+        area = req_data.get("area", "")
+        charger_type = req_data.get("charger_type", "")
+        recommendations = req_data.get("recommendations", {})
+        all_stations = req_data.get("all_stations", [])
+
+        if not message:
+            return jsonify({"error": "Missing message"}), 400
+
+        # Check API key and package
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not GEMINI_AVAILABLE or not api_key:
+            lower_msg = message.lower()
+            if "amenity" in lower_msg or "amenities" in lower_msg or "food" in lower_msg or "restaurant" in lower_msg or "shop" in lower_msg or "restroom" in lower_msg:
+                amenity_list = []
+                for s in all_stations:
+                    amenities = s.get("amenities_nearby", "None")
+                    if amenities and amenities.lower() != "none" and amenities.lower() != "nan":
+                        amenity_list.append(f"**{s.get('station_name')}** ({s.get('distance_km'):.1f}km away) has: *{amenities}*")
+                if amenity_list:
+                    response_text = "Here are the stations with amenities nearby:\n\n" + "\n".join(f"- {item}" for item in amenity_list)
+                else:
+                    response_text = "I couldn't find any stations with specific amenities nearby in this search."
+            elif "cheap" in lower_msg or "cost" in lower_msg or "price" in lower_msg:
+                cost_list = sorted(all_stations, key=lambda x: x.get("cost_per_kwh", 999))
+                response_text = "Here are the stations sorted by cost per kWh (cheapest first):\n\n" + \
+                    "\n".join(f"- **{s.get('station_name')}**: ${s.get('cost_per_kwh')}/kWh (Wait: {s.get('predicted_wait_min')} min, {s.get('distance_km'):.1f}km)" for s in cost_list[:5])
+            elif "wait" in lower_msg or "fast" in lower_msg or "time" in lower_msg:
+                wait_list = sorted(all_stations, key=lambda x: (x.get("predicted_wait_min", 999), x.get("distance_km", 999)))
+                response_text = "Here are the stations with the shortest predicted waiting times:\n\n" + \
+                    "\n".join(f"- **{s.get('station_name')}**: {s.get('predicted_wait_min')} mins wait ({s.get('distance_km'):.1f}km, {s.get('available_ports')} ports available)" for s in wait_list[:5])
+            else:
+                response_text = "I am running in local offline mode. You can ask me about **amenities/food**, **station costs**, or **wait times** and I will analyze the local dataset for you. Set your `GEMINI_API_KEY` to enable the full smart conversational assistant!"
+            
+            return jsonify({"response": response_text})
+
+        # Format system prompt
+        system_instruction = f"""
+You are ChargeIQ AI, a helpful EV Charging Assistant. You help drivers find and evaluate charging stations in {city}, {area} for a {charger_type} charger.
+Here is the current search context:
+Recommendations:
+"""
+        for rec_key, label in [
+            ("best_overall", "Best Overall"),
+            ("lowest_wait", "Lowest Wait Time"),
+            ("closest", "Closest Station"),
+            ("lowest_cost", "Lowest Cost")
+        ]:
+            rec = recommendations.get(rec_key)
+            if rec:
+                system_instruction += f"- {label}: {rec.get('station_name')} (Wait: {rec.get('predicted_wait_min')} min, Dist: {rec.get('distance_km'):.1f} km, Cost: ${rec.get('cost_per_kwh')}/kWh, Ports: {rec.get('available_ports')}/{rec.get('total_ports')} free)\n"
+
+        if all_stations:
+            system_instruction += "\nAll Matching Stations:\n"
+            for s in all_stations[:15]:
+                system_instruction += f"- {s.get('station_name')}: Dist: {s.get('distance_km'):.1f} km, Wait: {s.get('predicted_wait_min')} min, Ports: {s.get('available_ports')}/{s.get('total_ports')} free, Cost: ${s.get('cost_per_kwh')}/kWh, Amenities: {s.get('amenities_nearby', 'None')}, Network: {s.get('network', 'Unknown')}, Location Type: {s.get('location_type', 'Unknown')}\n"
+
+        system_instruction += """
+Answer the user's question accurately, concisely, and helpfully based on the context above.
+If they ask about amenities (restaurants, restrooms, coffee, etc.), check the 'Amenities' field.
+If they ask about brand/network (Tesla, Shell, ChargePoint), check 'Network'.
+If they ask about location type (retail, highway, hotel), check 'Location Type'.
+Be encouraging and use formatting (bold, bullet points) to make recommendations readable. If a question is unrelated to EV charging or the station list, politely guide them back to EV charging assistance. Keep replies under 120 words.
+"""
+
+        # Call Gemini using Client
+        client = genai.Client(api_key=api_key)
+        
+        contents_history = []
+        for h in history:
+            role = "user" if h.get("role") == "user" else "model"
+            contents_history.append(
+                types.Content(
+                    role=role,
+                    parts=[types.Part.from_text(text=h.get("text", ""))]
+                )
+            )
+        
+        contents_history.append(
+            types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=message)]
+            )
+        )
+
+        config = types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.7
+        )
+
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=contents_history,
+            config=config
+        )
+        
+        return jsonify({"response": response.text})
+
+    except Exception as e:
+        print(f"Error in ai_chat: {e}")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
+

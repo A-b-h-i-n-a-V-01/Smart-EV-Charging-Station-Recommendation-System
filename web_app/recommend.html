@@ -523,6 +523,72 @@
 
       </div>
 
+      <!-- AI Charging Assistant Section -->
+      <div class="ai-assistant-section glass-card hidden" id="ai-assistant-section">
+        <div class="ai-assistant-header">
+          <div class="ai-header-title-wrapper">
+            <span class="ai-header-icon">🤖</span>
+            <div>
+              <h3 class="ai-assistant-title">ChargeIQ AI Assistant</h3>
+              <p class="ai-assistant-subtitle">Powered by Gemini · Analyzing recommended stations & local amenities</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="ai-assistant-grid">
+          <!-- Left Column: Insights Summary -->
+          <div class="ai-insights-column">
+            <h4 class="ai-column-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="display:inline-block; vertical-align:-3px; margin-right:6px; stroke: var(--accent-blue);">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>Smart Insights Comparison
+            </h4>
+            <div class="ai-insights-content" id="ai-insights-content">
+              <div class="ai-skeleton-loader">
+                <span class="ai-loader-dot"></span>
+                <span class="ai-loader-dot"></span>
+                <span class="ai-loader-dot"></span>
+              </div>
+              <p class="ai-loading-text">Analyzing pricing tradeoffs, amenities, and wait times...</p>
+            </div>
+          </div>
+
+          <!-- Right Column: Interactive Chat -->
+          <div class="ai-chat-column">
+            <h4 class="ai-column-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="display:inline-block; vertical-align:-3px; margin-right:6px; stroke: var(--accent-blue);">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>Ask ChargeIQ AI
+            </h4>
+            
+            <!-- Chat history container -->
+            <div class="ai-chat-history" id="ai-chat-history">
+              <div class="ai-message assistant">
+                <div class="ai-message-bubble">
+                  Hello! I'm your ChargeIQ AI assistant. Ask me questions about the stations we found. For example:
+                  <div class="quick-chips" style="margin-top: 10px;">
+                    <button class="quick-chip-btn" onclick="sendQuickPrompt('Which station has the best amenities nearby?')">🍔 Best Amenities?</button>
+                    <button class="quick-chip-btn" onclick="sendQuickPrompt('Which station is the cheapest?')">💰 Cheapest option?</button>
+                    <button class="quick-chip-btn" onclick="sendQuickPrompt('Are there any stations near hotels or shopping?')">🏢 Hotel/Shopping nearby?</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chat input area -->
+            <form class="ai-chat-input-form" id="ai-chat-input-form" onsubmit="handleChatSubmit(event)">
+              <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="Ask about amenities, networks, prices..." autocomplete="off" />
+              <button type="submit" class="ai-chat-send-btn" id="ai-chat-send-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
       <!-- ML Live Time Disclaimer -->
       <div id="ml-live-time-banner"
         style="text-align: center; margin-top: 32px; margin-bottom: 8px; font-size: 0.85rem; font-weight: 400; color: rgba(255, 255, 255, 0.5); width: 100%;">
