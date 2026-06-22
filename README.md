@@ -8,6 +8,8 @@ A machine learning-powered web application that predicts waiting times at electr
 
 *   **Two-Stage Machine Learning Pipeline**: Combines classification (predicting if there is a wait) and regression (predicting the wait duration) to handle zero-inflated wait-time distributions.
 *   **Intelligent Ranking & Recommendation**: Stations are scored out of 10 based on predicted wait time, distance, cost per kWh, and port availability.
+*   **Gemini-Powered AI Insights (ChargeIQ AI)**: Dynamically analyzes recommended stations, compares trade-offs, and highlights location amenities (e.g., dining, restrooms, shopping) using Google's `gemini-2.5-flash` model.
+*   **Interactive AI Chatbot**: Allows drivers to ask conversational questions about nearby amenities, cost comparisons, and wait times, with intelligent local fallback when offline.
 *   **Dynamic Visual Dashboard**: A modern, premium user interface with a glassmorphism theme, interactive filters (City, Area, Charger Type), and responsive design.
 *   **Live Simulation Mode**: Uses current system time to simulate real-time traffic and occupancy patterns for station recommendations.
 
@@ -15,7 +17,8 @@ A machine learning-powered web application that predicts waiting times at electr
 
 ## 🛠️ Technology Stack
 
-*   **Backend**: Python, Flask, Flask-CORS
+*   **Backend**: Python, Flask, Flask-CORS, Python-Dotenv
+*   **GenAI / Large Language Model**: Google Gemini (`gemini-2.5-flash` via the `google-genai` SDK)
 *   **Machine Learning**: Scikit-Learn (`LogisticRegression`, `GradientBoostingRegressor`), Pandas, NumPy
 *   **Frontend**: Vanilla HTML5, CSS3 (Modern Glassmorphic styling), JavaScript (ES6+)
 
@@ -35,7 +38,8 @@ A machine learning-powered web application that predicts waiting times at electr
 │   ├── flask_app.py                      # Flask REST API server
 │   ├── index.html                        # Application landing page
 │   ├── recommend.html                    # Recommendation visual results dashboard
-│   └── styles.css                        # Glassmorphism visual theme
+│   ├── styles.css                        # Glassmorphism visual theme
+│   └── .env                              # Environment configuration (Git-ignored)
 ├── .gitignore                             # Specifies files for Git to ignore (e.g. raw 339MB CSV)
 ├── clf_model.pkl                          # Stage 1: Binary Classification Model (Wait vs No-Wait)
 ├── gbr_model.pkl                          # Stage 2: Regression Model (Wait-Time Prediction)
@@ -63,6 +67,17 @@ graph TD
 
 ---
 
+## 🤖 Gemini AI Integration & Features
+
+ChargeIQ features a built-in AI assistant driven by the `gemini-2.5-flash` model.
+
+### Features
+*   **Automatic Insights**: A markdown summary comparative report of the top recommended stations (Fastest, Closest, Cheapest, Best Overall) highlighting practical driver trade-offs.
+*   **Context-Aware Chat**: Interactive questions such as *"Where should I go if I want to grab a coffee?"* or *"Compare prices between the closest stations"* will return tailored answers based on live local search data.
+*   **Graceful Local Fallback**: If the Gemini API key is missing or the library is unavailable, the application switches to a local rules-based engine that processes queries for amenities, pricing, and wait times directly from the dataset.
+
+---
+
 ## 💻 Getting Started
 
 ### Prerequisites
@@ -81,6 +96,16 @@ Ensure you have Python 3.10+ installed on your machine.
     ```bash
     pip install -r requirements.txt
     ```
+
+### Configuring the Gemini API Key
+
+To enable the full AI-powered features:
+1. Get a free API Key from Google AI Studio.
+2. Create a file named `.env` in the root of the project (or inside the `web_app/` directory).
+3. Add your key to the file:
+   ```env
+   GEMINI_API_KEY=your_actual_api_key_here
+   ```
 
 ### Running the Application
 
