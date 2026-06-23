@@ -548,7 +548,7 @@ function getDemoData(city, chargerType) {
     {
       station_name: `${city} Central EV Hub`,
       charger_type: chargerType,
-      predicted_wait_min: 4,
+      predicted_wait_min: 0,
       distance_km: 1.2,
       available_ports: 5,
       total_ports: 10,
@@ -558,7 +558,7 @@ function getDemoData(city, chargerType) {
     {
       station_name: `Downtown ${city} Charge Point`,
       charger_type: chargerType,
-      predicted_wait_min: 1,
+      predicted_wait_min: 0,
       distance_km: 2.8,
       available_ports: 8,
       total_ports: 12,
@@ -568,7 +568,7 @@ function getDemoData(city, chargerType) {
     {
       station_name: `${city} Park & Charge`,
       charger_type: chargerType,
-      predicted_wait_min: 7,
+      predicted_wait_min: 0,
       distance_km: 0.6,
       available_ports: 3,
       total_ports: 6,
@@ -578,7 +578,7 @@ function getDemoData(city, chargerType) {
     {
       station_name: `${city} Mall Fast Charger`,
       charger_type: chargerType,
-      predicted_wait_min: 10,
+      predicted_wait_min: 0,
       distance_km: 3.5,
       available_ports: 4,
       total_ports: 8,
@@ -586,6 +586,13 @@ function getDemoData(city, chargerType) {
       score: 7.6
     }
   ];
+
+  // Enforce 0 wait time if ports are free
+  stations.forEach(s => {
+    if (s.available_ports > 0) {
+      s.predicted_wait_min = 0;
+    }
+  });
 
   return {
     best_overall: stations[0],
