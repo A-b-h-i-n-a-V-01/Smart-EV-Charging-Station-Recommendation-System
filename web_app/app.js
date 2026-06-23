@@ -874,10 +874,34 @@ function initScrollAnimations() {
   });
 }
 
+/* Page transition helper */
+function initPageTransitions() {
+  document.body.classList.add('fade-in');
+
+  document.querySelectorAll('a').forEach(link => {
+    const href = link.getAttribute('href');
+    if (href && href.endsWith('.html') && !href.startsWith('http')) {
+      link.addEventListener('click', (e) => {
+        // Skip fade-out if we're clicking home link on home page (handled by smooth scroll)
+        if (isHomePage && (href === 'index.html' || link.id === 'nav-home' || link.id === 'nav-logo-home')) {
+          return;
+        }
+        
+        e.preventDefault();
+        document.body.classList.add('fade-out');
+        setTimeout(() => {
+          window.location.href = href;
+        }, 300);
+      });
+    }
+  });
+}
+
 /* ══════════════════════════════════════
    INIT
-══════════════════════════════════════ */
+   ══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+  initPageTransitions();
   if (isRecommendPage) {
     initCityDropdown();
     initAreaDropdown();
@@ -1139,3 +1163,47 @@ function sendQuickPrompt(promptText) {
 
 window.sendQuickPrompt = sendQuickPrompt;
 window.handleChatSubmit = handleChatSubmit;
+
+/* ══════════════════════════════════════
+   SCROLL SPY / ACTIVE NAV LINKS (home page)
+   ══════════════════════════════════════ */
+if (isHomePage) {
+  const homeLink = $('nav-home');
+  const howLink = $('nav-how');
+  const howSection = $('how-it-works');
+  const logoLink = $('nav-logo-home');
+
+  if (homeLink && howLink && howSection) {
+    window.addEventListener('scroll', () => {
+      const scrollPos = window.scrollY;
+      const howOffset = howSection.offsetTop - 150; // offset for navbar height
+
+      if (scrollPos >= howOffset) {
+        homeLink.classList.remove('active');
+        howLink.classList.add('active');
+      } else {
+        howLink.classList.remove('active');
+        homeLink.classList.add('active');
+      }
+    }, { passive: true });
+  }
+
+  // Smooth scroll to top when Home is clicked
+  if (homeLink) {
+    homeLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      history.pushState("", document.title, window.location.pathname + window.location.search);
+    });
+  }
+
+  // Smooth scroll to top when Logo is clicked
+  if (logoLink) {
+    logoLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      history.pushState("", document.title, window.location.pathname + window.location.search);
+    });
+  }
+}
+

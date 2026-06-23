@@ -2025,3 +2025,17 @@ svg {
     opacity: 1;
   }
 }
+
+/* Page Transition Animations */
+body {
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+body.fade-in {
+  opacity: 1;
+}
+
+body.fade-out {
+  opacity: 0;
+}
