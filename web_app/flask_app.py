@@ -178,13 +178,22 @@ def recommend():
             # Predict wait time
             predicted_wait = predict_wait_time(features_df)
             
+            # Introduce small station-specific variation for realism if there is a wait
+            if predicted_wait > 0:
+                try:
+                    station_num = int(''.join(filter(str.isdigit, str(row["station_id"]))))
+                    jitter = (station_num % 7) - 3  # -3 to +3 minutes variation
+                    predicted_wait = max(1, predicted_wait + jitter)
+                except ValueError:
+                    pass
+            
             #Override if free ports
             if ports_avail > 0:
                 predicted_wait = 0
             
 
-            # Calculate distance
-            dist = haversine_distance(user_lat, user_lon, row["latitude"], row["longitude"])
+            # Calculate distance (with a realistic minimum of 0.1 km)
+            dist = max(0.1, haversine_distance(user_lat, user_lon, row["latitude"], row["longitude"]))
             
             # Calculate a recommendation score from 1.0 to 9.9
             # Use tuned weights so massive wait times don't push the score into negatives before clamping!
@@ -217,19 +226,19 @@ def recommend():
         for s in stations_list:
             s["predicted_wait_min"] = int(round(s["predicted_wait_min"]))
 
-        # Unique selection logic with tie-breaking
-        used_station_ids = set()
-        
-        def get_best_station(candidates, sort_keys, reason_text):
+        def get_best_station(candidates, sort_keys, reason_text, exclude_ids=None):
             if not candidates:
                 return None
             
+            if exclude_ids is None:
+                exclude_ids = set()
+            
             # Try to find an unused station with available ports > 0
-            valid_pool = [c for c in candidates if c["station_id"] not in used_station_ids and c["available_ports"] > 0]
+            valid_pool = [c for c in candidates if c["station_id"] not in exclude_ids and c["available_ports"] > 0]
             
             # If all unused stations have 0 ports, fall back to any unused station
             if not valid_pool:
-                valid_pool = [c for c in candidates if c["station_id"] not in used_station_ids]
+                valid_pool = [c for c in candidates if c["station_id"] not in exclude_ids]
                 
             # If all stations are used, fall back to ANY station with > 0 ports
             if not valid_pool:
@@ -242,9 +251,6 @@ def recommend():
             pool.sort(key=lambda x: tuple(x[k] * (1 if k != "score" and k != "available_ports" else -1) for k in sort_keys))
             winner = pool[0]
             
-            # Mark as used
-            used_station_ids.add(winner["station_id"])
-            
             winner_copy = dict(winner)
             winner_copy["reason"] = reason_text
             return winner_copy
@@ -256,26 +262,32 @@ def recommend():
             reason_text="Selected because it has the highest combined score based on wait time, distance, cost, and availability."
         )
 
+        exclude_set = {best_overall["station_id"]} if best_overall else set()
+
         # 2. Lowest Wait Time
         lowest_wait = get_best_station(
             stations_list,
             sort_keys=["predicted_wait_min", "distance_km", "cost_per_kwh"],
-            reason_text="Selected because it has the lowest predicted waiting time among all matching stations."
+            reason_text="Selected because it has the lowest predicted waiting time among all matching stations.",
+            exclude_ids=exclude_set
         )
 
         # 3. Closest Station
         closest = get_best_station(
             stations_list,
             sort_keys=["distance_km", "predicted_wait_min", "cost_per_kwh"],
-            reason_text="Selected because it is the closest charging station to the chosen area."
+            reason_text="Selected because it is the closest charging station to the chosen area.",
+            exclude_ids=exclude_set
         )
 
         # 4. Lowest Cost
         lowest_cost = get_best_station(
             stations_list,
             sort_keys=["cost_per_kwh", "predicted_wait_min", "distance_km"],
-            reason_text="Selected because it has the lowest charging cost per kWh."
+            reason_text="Selected because it has the lowest charging cost per kWh.",
+            exclude_ids=exclude_set
         )
+
 
         result = {
             "best_overall": best_overall,

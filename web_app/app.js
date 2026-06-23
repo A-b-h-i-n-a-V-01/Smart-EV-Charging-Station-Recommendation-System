@@ -136,7 +136,7 @@ const AREAS_BY_CITY = {
 const LOCAL_API_URL = 'http://127.0.0.1:5000';
 const CLOUD_API_URL = 'https://ev-recommend-backend.onrender.com';
 
-const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '')
   ? LOCAL_API_URL
   : CLOUD_API_URL;
 
@@ -607,6 +607,7 @@ function getDemoData(city, chargerType) {
 ══════════════════════════════════════ */
 async function fetchRecommendations(city, area, chargerType) {
   try {
+    console.log(`[ChargeIQ] Fetching recommendations from: ${API_ENDPOINT}`);
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
